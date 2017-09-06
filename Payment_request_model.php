@@ -219,6 +219,11 @@ class Payment_request_model extends Base_Model
         if( in_array($request->getPaymentCode(), array(PaymentModeType::OCBC_CREDIT_CARD)) ) {
             $chkStatus = false;
         }
+        if( in_array($request->getPaymentCode(), array(PaymentModeType::BANK_TRANSFER_TMONEY)) ) {
+            $chkStatus = false;
+        }
+
+
         if($chkStatus){
             $this->db->where('status <>', $request->getStatus());
         }

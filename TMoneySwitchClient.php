@@ -51,6 +51,8 @@ class TMoneySwitchClient implements PaymentRequestClientInterface{
     protected $token;
     protected $header;
     protected $transactionID;
+    protected $response_fields ;
+    
 
     protected $_inquiryTransferUri  = 'transfer-p2b';
     protected $_signInUri           = 'sign-in';
@@ -67,8 +69,11 @@ class TMoneySwitchClient implements PaymentRequestClientInterface{
     protected $tmoney_log ;
     protected $tmoney_info;
     protected $info ;
-
-
+    protected $_reffno_not_found  = 'PB-001';
+    protected $_transfer_hit_count = 0 ;
+    protected $_inquiry_hit_count = 0 ;
+    protected $_last_process;
+    protected $_number_reffno_not_found =0 ;
 
 
     function __construct(array $config)
@@ -96,6 +101,9 @@ class TMoneySwitchClient implements PaymentRequestClientInterface{
             'Authorization'=>'Bearer '. $this->_getBearer(),
             'Content-Type'=>'application/x-www-form-urlencoded'
         );
+
+
+
 
     }
 
@@ -161,8 +169,7 @@ class TMoneySwitchClient implements PaymentRequestClientInterface{
 
     public function inquiry()
     {
-
-       if( $signInResponse = $this->signIn()) {
+        if( $signInResponse = $this->signIn()) {
            $this->_signin_response = json_decode($signInResponse->getFormattedResponse(),true) ;
            $this->_addInfo("signin_response",$this->getSelectedArray($this->_signin_response , array("resultCode","resultDesc")));
            if ( !$signInResponse->isSuccess()) {
@@ -171,6 +178,10 @@ class TMoneySwitchClient implements PaymentRequestClientInterface{
            $this->_removeInfo("signin_param");
            $this->setToken($signInResponse->getUser()->token);
        }else{return false;}
+
+        //use for retry hit
+        $this->_inquiry_hit_count++;
+        $intenalRefId = $this->getReferenceNo() .  $this->_inquiry_hit_count ;
 
         $this->setTransactionType($this->_inquiryTrxType);
         $option = array(
@@ -183,23 +194,52 @@ class TMoneySwitchClient implements PaymentRequestClientInterface{
             'pin'=>$this->_getPin(),
             'token'=>$this->getToken(),
             'transactionID'=>$this->getTransactionID(),
-            'refNo'=>$this->getReferenceNo(),
+            'refNo'=>$intenalRefId,
             'amount'=>$this->getLandedAmount() ,
             'bankCode'=>$this->getBankCode(),
             'bankAccount'=>$this->getAccountNo(),
             'thirdpartyEmail'=>$this->getReceiverEmail()    
         );
+
         $this->_option = $option;
         $this->_addInfo("inquiry_param",$this->getSelectedArray($option , array("transactionID","refNo")));
-
         set_time_limit($this->_getTimeLimit());
         $this->_http_serv->post($this->header, $option, $this->_inquiryTransferUri);
+        $this->_addInfo("number_of_inquiry_calls",$this->_inquiry_hit_count);
+        /*
+      
+        $response = array(
+            'resultCode'=>"00",
+            'resultDesc'=>"SUKSES & di-approve oleh sistem",
+            'transactionID'=>"195170809230756847",
+            'refNo'=>"27293811558276",
+            'timeStamp'=>"2017-08-09 23:07:56.747673"
+        );
+
+        return new TMoneySwitchResponse($response,"inquiry"); */
+
         return new TMoneySwitchResponse($this->_http_serv->getLastResponse(),"api");
+    }
+
+
+
+    public function setLastResponse(){
+        //get last response from request
+        $last_response = $this->getResponseFields() ;
+        if(array_key_exists('tmoney_process', $last_response)) {
+            $this->_last_process = json_decode($last_response["tmoney_process"], true);
+        }
+        $this->_inquiry_hit_count        =  $this->_last_process["number_of_inquiry_calls"];
+        $this->_transfer_hit_count       =  $this->_last_process["number_of_transfer_calls"];
+        $this->_number_reffno_not_found  =  $this->_last_process["number_reffno_not_found"];
     }
 
 
     public function bankTransfer()
     {
+
+        $this->setLastResponse();
+
         if( $inquiryResponse = $this->inquiry()) {
             $this->_inquiry_response = json_decode($inquiryResponse->getFormattedResponse(),true) ;
             //refNo once sent transfer
@@ -210,6 +250,14 @@ class TMoneySwitchClient implements PaymentRequestClientInterface{
             }
             $this->_removeInfo("signin_response");
         }else{return false;}
+
+        $norefTest = $inquiryResponse->getRefNoSwitcher() ;
+        if($this->_transfer_hit_count == 1){
+            $norefTest = "0000000001" ;
+        }
+
+        $this->_transfer_hit_count++;
+        $this->_addInfo("number_of_transfer_calls",$this->_transfer_hit_count);
 
 
         $this->setTransactionType($this->_transferTrxType);
@@ -224,10 +272,12 @@ class TMoneySwitchClient implements PaymentRequestClientInterface{
             'bankAccount'=>$this->getAccountNo(),    // get from param option
             'amount'=>$this->getLandedAmount(),
             'description'=>$this->_transferDesc,
-            'thirdpartyEmail'=>$this->getReceiverEmail(),    
+            'thirdpartyEmail'=>$this->getReceiverEmail(),
             'pin'=>$this->_getPin(),
             'transactionID'=>$inquiryResponse->getTransactionIDSwitcher(),
             'refNo'=>$inquiryResponse->getRefNoSwitcher()
+             // 'refNo'=>$norefTest
+
         );
 
         $this->_option = $option;
@@ -236,8 +286,18 @@ class TMoneySwitchClient implements PaymentRequestClientInterface{
         //curl
         set_time_limit($this->_getTimeLimit());
         $this->_http_serv->post($this->header, $option, $this->_inquiryTransferUri);
-        return new TMoneySwitchResponse($this->_http_serv->getLastResponse(),"transfer");
 
+        $trfResponse =  new TMoneySwitchResponse($this->_http_serv->getLastResponse(),"transfer");
+        
+        if($trfResponse->getResponseCode()==$this->_reffno_not_found && $this->_transfer_hit_count <= 2 ){
+            $response = array(
+                'resultCode'=>"PRC",
+                'resultDesc'=>"PB-001, Refference ID not found"
+            );
+            return new TMoneySwitchResponse($response,"transfer");           
+        }
+
+        return  new TMoneySwitchResponse($this->_http_serv->getLastResponse(),"transfer");
     }
 
     //set post option to Client Object , call from TMoneySwitchClientFactory
@@ -414,7 +474,16 @@ class TMoneySwitchClient implements PaymentRequestClientInterface{
     {
         $this->tmoney_log = $tmoney_log;
     }
-    
+
+    public function getResponseFields()
+    {
+        return $this->response_fields;
+    }
+    public function setResponseFields($response_fields)
+    {
+        $this->response_fields = $response_fields;
+    }
+            
     public function getLog()
     {
         return $this->log;

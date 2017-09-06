@@ -57,6 +57,7 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
         if(array_key_exists('resultDesc', $fields)) {
 
             foreach ($fields AS $field => $value) {
+
                 if ($field == 'resultCode') {
                     $this->setResponseCode($value);
                 }
@@ -123,6 +124,7 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
                 }
 
             }
+
         } else{
 
             $this->setFormattedResponse(array('ERR'=>'timeout'));
@@ -174,12 +176,14 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
     {
         return (in_array($this->getResponseCode(), array('0','00')) || $this->getResponseStatus()=="PAID");
     }
+  
 
     public function isPending()
     {
-        return (in_array($this->getResponseStatus(), array(TMoneySwitchFunction::TMONEY_STATUS_INPROCESS, TMoneySwitchFunction::TMONEY_STATUS_OUTSTANDING, TMoneySwitchFunction::TMONEY_STATUS_FOR_VERIFICATION)));
+        return (in_array($this->getResponseCode(), array( '01', 'PRC' )) );
     }
-
+    
+    
     public function getStatus()
     {
         $status = PaymentRequestStatus::FAIL;

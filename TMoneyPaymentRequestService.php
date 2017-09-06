@@ -57,10 +57,18 @@ class TMoneyPaymentRequestService extends PaymentRequestService{
             return false;
         }
 
+
+
+
+
+
         $tmoney_switch_client->setReferenceNo($request->getTransactionID() . $request->getModuleCode());
 
         $tmoney_switch_client->setTransactionID($request->getTransactionID());
-        
+
+
+
+
         
         if( $account = $request->getOption()->getValue('bank_account') )
             $tmoney_switch_client->setAccountNo($account);
@@ -145,6 +153,9 @@ class TMoneyPaymentRequestService extends PaymentRequestService{
             return false;
         }
 
+        $tmoney_switch_client->setResponseFields($request->getResponse()->toArray());
+
+
         $response = $tmoney_switch_client->bankTransfer() ;
         $request->getResponse()->setJson(json_encode(array("TMoney Bank Transfer"=>$tmoney_switch_client->getTransactionType())));
 
@@ -155,7 +166,7 @@ class TMoneyPaymentRequestService extends PaymentRequestService{
 
             //save selected sent and return data tmoney , need to compare with tmoney if fail during process
             $request->getResponse()->add('tmoney_process', $tmoney_switch_client->getTmoneyInfo());
-            $request->setReferenceID($tmoney_switch_client->getSwitcherReferenceNo()); //refNo once sent transfer
+            //$request->setReferenceID($tmoney_switch_client->getSwitcherReferenceNo()); //refNo once sent transfer
 
             if( $result ) {
                 $request->setReferenceID($response->getRefNoSwitcher()); //refNO from payment return
