@@ -63,6 +63,7 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
                 }
                 if ($field == 'resultDesc') {
                     $this->setDescription($value);
+                    $this->setRemarks($value);
                 }
                 if ($field == 'transactionID') {
                     $this->setTransactionIDSwitcher($value);
@@ -120,14 +121,16 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
                 }
 
                 if ($field == 'user') {
-                    $this->setUser($value); //object
+                    $this->setUser($value); //object                    
+                    $this->setToken($value->token);
                 }
 
             }
 
         } else{
 
-            $this->setFormattedResponse(array('ERR'=>'timeout'));
+            //$this->setFormattedResponse(array('ERR'=>'timeout'));
+            $this->setFormattedResponse(array('resultCode'=>'PRC','resultDesc'=>'timeout'));
             //ERROR but make it processing
             $this->setResponseCode('PRC');
             $this->setDescription('Received timeout but pending confirmation from TMoney');
@@ -137,6 +140,7 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
     public function setRaw($raw)
     {
         $this->raw = $raw;
+
         $this->_extractResponse($raw);
         return $this;
     }
@@ -176,18 +180,18 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
     {
         return (in_array($this->getResponseCode(), array('0','00')) || $this->getResponseStatus()=="PAID");
     }
-  
+
 
     public function isPending()
     {
-        return (in_array($this->getResponseCode(), array( '01', 'PRC' )) );
+        return (in_array($this->getResponseCode(), array( 'PB-001', 'PRC' )) );
     }
-    
-    
+
+
     public function getStatus()
     {
         $status = PaymentRequestStatus::FAIL;
-        
+
         if($this->isSuccess())
         {
             $status = PaymentRequestStatus::SUCCESS;
@@ -209,7 +213,7 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
     {
         return $this->response_code;
     }
-    
+
     public function setDescription($description)
     {
         $this->description = $description;
@@ -228,7 +232,7 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
     public function getInvoiceNo(){
         return $this->invoice_no;
     }
-    
+
     public function setResponseStatus($response_status){
         $this->response_status = $response_status;
     }
@@ -360,12 +364,12 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
     {
         $this->sender_city = $sender_city;
     }
-  
+
     public function getSenderPostcode()
     {
         return $this->sender_postcode;
     }
-    
+
     public function setSenderPostcode($sender_postcode)
     {
         $this->sender_postcode = $sender_postcode;
@@ -375,67 +379,67 @@ class TMoneySwitchResponse implements PaymentRequestResponseInterface{
     {
         return $this->sender_country;
     }
-    
+
     public function setSenderCountry($sender_country)
     {
         $this->sender_country = $sender_country;
     }
-    
+
     public function getSenderTelepon()
     {
         return $this->sender_telepon;
     }
-  
+
     public function setSenderTelepon($sender_telepon)
     {
         $this->sender_telepon = $sender_telepon;
     }
-   
+
     public function getDestAccHolder()
     {
         return $this->dest_acc_holder;
     }
-   
+
     public function setDestAccHolder($dest_acc_holder)
     {
         $this->dest_acc_holder = $dest_acc_holder;
     }
-  
+
     public function getDestBankcode()
     {
         return $this->dest_bankcode;
     }
-  
+
     public function setDestBankcode($dest_bankcode)
     {
         $this->dest_bankcode = $dest_bankcode;
     }
-   
+
     public function getDestBankacc()
     {
         return $this->dest_bankacc;
     }
-    
+
     public function setDestBankacc($dest_bankacc)
     {
         $this->dest_bankacc = $dest_bankacc;
     }
-   
+
     public function getDestBankname()
     {
         return $this->dest_bankname;
     }
-   
+
     public function setDestBankname($dest_bankname)
     {
         $this->dest_bankname = $dest_bankname;
     }
-   
+
     public function getUser()
     {
         return $this->user;
     }
-   
+
     public function setUser($user)
     {
         $this->user = $user;
