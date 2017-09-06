@@ -192,6 +192,8 @@ $route['paymentrequest/log'] = 'paymentrequest/Payment_request/getAuditLog';
  * Batch Job
  */
 $route['job/event/notification/banktransfer/initiated'] = 'common/Batch_job/listenNotifyBankTransferRequestInitiatedQueue';
+$route['job/paymentrequest/tmoney/inquire'] = 'common/Batch_job/inquireTMoneyTransactionStatus';
+$route['job/paymentrequest/tmoney/retry'] = 'common/Batch_job/retryTMoneyTransaction';
 
 
 /*
