@@ -213,7 +213,7 @@ class TMoneyPaymentRequestService extends PaymentRequestService{
 
             if(array_key_exists("resultCode",$tmoney_response_arr)) {
 
-                if ($tmoney_response_arr["resultCode"] == "PRC") {
+                if ($tmoney_response_arr["resultCode"] == "PRC"  || $tmoney_response_arr["resultCode"] == "PB-001") {
                     if ($response = $tmoney_switch_client->bankTransfer()) {
                         $ori_request = clone($request);
 
