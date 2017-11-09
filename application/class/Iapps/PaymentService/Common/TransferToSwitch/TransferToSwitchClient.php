@@ -141,16 +141,17 @@ class TransferToSwitchClient implements PaymentRequestClientInterface{
         $this->_addInfo("number_of_check_trx",$this->_number_of_check_trx);
         $this->_addInfo("timeout_of_check_trx",$this->_timeout_of_check_trx);
 
+
         if($response) {
             $response_arr = json_decode($response, true);
-
+            //$response_arr= array("status"=>"60000" ,"status_message" => "AVAILABLE" ,"payer_transaction_reference"=>"1507712155");
 
             if (array_key_exists("status",$response_arr)){
 
-                $selectedResponse = $this->getSelectedArray($response_arr,array('beneficiary','id','status','status_message'));
+                $selectedResponse = $this->getSelectedArray($response_arr,array('beneficiary','id','status','status_message' ,'payer_transaction_reference'));
 
                 if ($response_arr["status_message"] == "COMPLETED") {
-                    $response = array('resultCode' => "0", 'resultDesc' => "Transaction ID is found" ,'response'=>$selectedResponse  );
+                    $response = array('resultCode' => "0", 'resultDesc' => $response_arr["status_message"] ,'response'=>$selectedResponse  );
                     return $response;
                 }
                 $response = array('resultCode' => "1", 'status' => $response_arr["status"],'resultDesc' => $response_arr["status_message"] ,'response'=>$selectedResponse );
@@ -175,7 +176,7 @@ class TransferToSwitchClient implements PaymentRequestClientInterface{
         $this->getLastResponse(); //get from  db fields
         $this->setLastResponse(); //set to class fields
 
-        if ($this->_last_rc == "PRC"  ||  $this->_last_rc == "20000" ) {
+        if ($this->_last_rc == "PRC"  ||  $this->_last_rc == "20000"  ||  $this->_last_rc == "50000" ||  $this->_last_rc == "60000") {     //50000=submitted
 
             $info = $this->_check_trx_info;
             $startDate = date("Y-m-d");
@@ -188,34 +189,39 @@ class TransferToSwitchClient implements PaymentRequestClientInterface{
             if (array_key_exists('trxID', $info))
                 $trxID = $info["trxID"];
 
+
+
             //check transaction timeout || after transfer timeout
             if ( ($this->_last_process == "check_transaction"  && $this->_number_of_check_trx <=2  &&  $this->_timeout_of_check_trx ==1)
-                   ||   ($this->_last_process == "transfer" && $this->_number_of_check_trx == 0)   ||  ($this->_last_rc == "20000") ) {
+                   ||   ($this->_last_process == "transfer" && $this->_number_of_check_trx == 0)   ||  ($this->_last_rc == "20000"  ||  $this->_last_rc == "50000"  ||  $this->_last_rc == "60000" ) ) {
 
                 $rslt = $this->checkTrx($trxID);
 
-                if($this->_number_of_check_trx == 3  &&  $this->_last_rc != "20000" ){
+                if($this->_number_of_check_trx == 3  &&  ( $this->_last_rc != "20000"   && $this->_last_rc != "50000" && $this->_last_rc != "60000") ){
                     $response = array('status' => "", 'status_message' => "Received timeout when check transaction");
                     $response = json_encode($response);
                     return new TransferToSwitchResponse($response, "checkTrx");
                 }
                 if ($rslt["resultCode"] == "0") {
-                    $response = array('status' => "0", 'status_message' => "Transaction ID is found");
+                    $response = array('status' => "0", 'status_message' => $rslt["resultDesc"] ,'id'=>$trxID ,'response'=>$rslt["response"]);
                 } else {
                     if ($rslt["resultCode"] == "1") {
-                        if($this->_last_rc == "20000") {    //esp for confirmed and submited
-                            $response = array('status' => "20000", 'status_message' => $rslt["resultDesc"], 'response' => $rslt["response"]);
-                        }else{
+
+                        if($this->_last_rc == "20000" || $this->_last_rc == "50000" || $this->_last_rc == "60000"){    //esp for confirmed submited , available
+                            $response = array('status' => $rslt["status"], 'status_message' => $rslt["resultDesc"], 'response' => $rslt["response"]);
+
+                        }else {
                             $response = array('status' => "PRC", 'status_message' => $rslt["resultDesc"], 'response' => $rslt["response"]);
                             if ($rslt["status"] == "90200") {  //decline beneficiary
                                 $response = array('status' => $rslt["status"], 'status_message' => $rslt["resultDesc"], 'response' => $rslt["response"]);
-                            }    
-                        }                                
+                            }
+                        }
 
                     } else {
                         $response = array('status' => "PRC", 'status_message' => "Received timeout when check transaction");
                     }
                 }
+
                 $response = json_encode($response);
                 return new TransferToSwitchResponse($response, "checkTrx");
             }
