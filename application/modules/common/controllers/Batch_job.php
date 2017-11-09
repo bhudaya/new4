@@ -69,7 +69,7 @@ class Batch_job extends System_Base_Controller{
         $this->_respondWithSuccessCode(MessageCode::CODE_JOB_PROCESS_PASSED);
         return true;
     }
-    
+
 
     public function reconTransfertoTransaction()
     {
@@ -77,12 +77,13 @@ class Batch_job extends System_Base_Controller{
             return false;
 
 
-        if($this->input->get('trx_date')){
-            $trx_date= $this->input->get('trx_date');
+        if($this->input->get('recon_date')){
+            $recon_date= $this->input->get('recon_date');
         }else{
-                $trx_date = Date("Y-m-d");
-            }
+            $recon_date = Date("Y-m-d");
+            $trx_date = date('Y-m-d', strtotime('-1 days', strtotime($recon_date)));
 
+        }
 
         //$trx_date= $this->input->get('trx_date') ? IappsDateTime::fromString($this->input->get('trx_date')) : (new IappsDateTime("Y-m-d"));
         RequestHeader::set(ResponseHeader::FIELD_X_AUTHORIZATION, $this->clientToken);
@@ -91,7 +92,7 @@ class Batch_job extends System_Base_Controller{
         $recon_serv->setUpdatedBy($system_user_id);
         $recon_serv->setIpAddress(IpAddress::fromString($this->_getIpAddress()));
 
-        $recon_serv->process($trx_date);
+        $recon_serv->process($recon_date);
         $this->_respondWithSuccessCode(MessageCode::CODE_JOB_PROCESS_PASSED);
         return true;
     }
