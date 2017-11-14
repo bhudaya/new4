@@ -256,7 +256,7 @@ class TransferToPaymentRequestService extends PaymentRequestService{
                                 $request->setReferenceID($response->getTransactionIDSwitcher());
 
                                 if (parent::_updatePaymentRequestStatus($request, $ori_request)) {
-                                    $this->getRepository()->beginDBTransaction();
+                                    $this->getRepository()->completeDBTransaction();
                                     $this->setResponseCode(MessageCode::CODE_REQUEST_COMPLETED);
                                     return true;
                                 } else {
@@ -276,11 +276,11 @@ class TransferToPaymentRequestService extends PaymentRequestService{
                                 $this->setResponseMessage($response->getRemarks());
                                 $request->setFail();
                                 $this->getRepository()->updateResponse($request);
-                                $this->getRepository()->commitDBTransaction();
+                                $this->getRepository()->completeDBTransaction();
                                 return true;
                             } elseif ($request->getStatus() == PaymentRequestStatus::PENDING) {
                                 $this->getRepository()->updateResponse($request);
-                                $this->getRepository()->commitDBTransaction();
+                                $this->getRepository()->completeDBTransaction();
                                 return false;
                             }
                         }
